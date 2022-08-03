@@ -4,12 +4,13 @@
 #         Email Address: matanantebi@mail.tau.ac.il
 #                   Copyrights Reserved ©
 # -------------------------------------------------------
-import requests
 import json
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import datetime
+from BLSAPI import *
+from FileGenerator import *
 
 
 def nonseasonal(series):
@@ -83,28 +84,36 @@ def validate_args(params):
 
 
 def main(params):
-    params = validate_args(params)
+    blsapi = BLSAPI()
+    filegen = FileGenerator(index=['series ID', 'year', 'value', 'received_date', 'raw_file'])
     years = time_array(params)  # define time array in terms of years.
-    # columns = (["series id", "year", "value", "received_date", "raw_file"])
-    df = pd.DataFrame(index=['series ID', 'year', 'value', 'received_date', 'raw_file'])
+    # df = pd.DataFrame(index=['series ID', 'year', 'value', 'received_date', 'raw_file'])
     for year in years:
-        headers = {'Content-type': 'application/json'}
-        data = json.dumps({"seriesid": params.seriesIDs,
-                           "startyear": year,
-                           "endyear": year})
-        p = requests.post('https://api.bls.gov/publicAPI/v2/timeseries/data/', data=data, headers=headers)
+        p = blsapi.post_request({"seriesid": params.seriesIDs,
+                                 "startyear": year,
+                                 "endyear": year})
+        # headers = {'Content-type': 'application/json'}
+        #
+        # data = json.dumps({"seriesid": params.seriesIDs,
+        #                    "startyear": year,
+        #                    "endyear": year})
+        # p = requests.post('https://api.bls.gov/publicAPI/v2/timeseries/data/', data=data, headers=headers)
         rcvdate = datetime.datetime.now().strftime("%d/%m/%y")
         json_data = json.loads(p.text)
         for series in json_data['Results']['series']:
             seriesId = series['seriesID']
             value = nonseasonal(series)
             rcrdname = f"{series['seriesID']}_{year}"
-            loc = len(df.columns)
-            df.insert(loc=loc, column=str(loc), value=[seriesId, year, value, rcvdate, rcrdname], allow_duplicates=False)
-    df_transpose = df.T
-    dataframe2parquet(df_transpose)
-    for _, row in df_transpose.iterrows():
-        dataframe2json(row)
+            filegen.insert2df([seriesId, year, value, rcvdate, rcrdname])
+            # loc = len(df.columns)
+            # df.insert(loc=loc, column=str(loc), value=[seriesId, year, value, rcvdate, rcrdname], allow_duplicates=False)
+    filegen.toMirror()
+    filegen.toRaw()
+
+    # df_transpose = df.T
+    # dataframe2parquet(df_transpose)
+    # for _, row in df_transpose.iterrows():
+    #     dataframe2json(row)
     print("finished")
 
 

@@ -15,7 +15,10 @@ if __name__ == "__main__":
     parser.add_argument("seriesIDs", type=str, help="series id's.")
     parser.add_argument("startyear", type=str, help="start year.")
     parser.add_argument("endyear", type=str, help="end year.")
+    parser.add_argument("Raw", action='store_true', help="save augmented images.")
+    parser.add_argument("Mirror", action='store_true', help="save augmented images.")
     params = parser.parse_args()
+    params = validate_args(params)
     main(params)
 
 
