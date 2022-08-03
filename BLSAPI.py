@@ -9,6 +9,9 @@ import json
 
 
 class BLSAPI:
+    """
+    The class 'BLSAPI' responsible for the data request from the U.S. BLS API.
+    """
 
     def __init__(self):
         self.url = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'

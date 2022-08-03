@@ -8,7 +8,6 @@ import json
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import datetime
 from BLSAPI import *
 from FileGenerator import *
 
@@ -87,33 +86,24 @@ def main(params):
     blsapi = BLSAPI()
     filegen = FileGenerator(index=['series ID', 'year', 'value', 'received_date', 'raw_file'])
     years = time_array(params)  # define time array in terms of years.
-    # df = pd.DataFrame(index=['series ID', 'year', 'value', 'received_date', 'raw_file'])
     for year in years:
-        p = blsapi.post_request({"seriesid": params.seriesIDs,
+        p1 = blsapi.post_request({"seriesid": params.seriesIDs,
                                  "startyear": year,
                                  "endyear": year})
-        # headers = {'Content-type': 'application/json'}
-        #
-        # data = json.dumps({"seriesid": params.seriesIDs,
-        #                    "startyear": year,
-        #                    "endyear": year})
-        # p = requests.post('https://api.bls.gov/publicAPI/v2/timeseries/data/', data=data, headers=headers)
-        rcvdate = datetime.datetime.now().strftime("%d/%m/%y")
-        json_data = json.loads(p.text)
-        for series in json_data['Results']['series']:
-            seriesId = series['seriesID']
-            value = nonseasonal(series)
-            rcrdname = f"{series['seriesID']}_{year}"
-            filegen.insert2df([seriesId, year, value, rcvdate, rcrdname])
-            # loc = len(df.columns)
-            # df.insert(loc=loc, column=str(loc), value=[seriesId, year, value, rcvdate, rcrdname], allow_duplicates=False)
-    filegen.toMirror()
-    filegen.toRaw()
-
-    # df_transpose = df.T
-    # dataframe2parquet(df_transpose)
-    # for _, row in df_transpose.iterrows():
-    #     dataframe2json(row)
+        json_data = json.loads(p1.text)
+        if json_data['status'] == "REQUEST_SUCCEEDED":
+            for series in json_data['Results']['series']:
+                seriesId = series['seriesID']
+                value = nonseasonal(series)
+                rcrdname = f"{series['seriesID']}_{year}"
+                filegen.insert2df([seriesId, year, value, rcrdname])
+        else:
+            print(f"The status message is as follows:\n{json_data['status']}")
+            raise Exception("The U.S BLS api is no longer available for me!")
+    if params.Mirror:
+        filegen.toMirror()
+    if params.Raw:
+        filegen.toRaw()
     print("finished")
 
 
